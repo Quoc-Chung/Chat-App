@@ -1,0 +1,115 @@
+ 1. Redux
+👉 Dùng để quản lý state toàn cục trong ứng dụng React.
+
+Giải quyết vấn đề chia sẻ dữ liệu giữa nhiều component (đặc biệt là khi các component không có quan hệ cha-con trực tiếp).
+
+Dữ liệu được lưu trong một store chung và có thể cập nhật thông qua actions và reducers.
+
+📌 Dùng khi:
+
+App phức tạp, có nhiều component dùng chung 1 dữ liệu như thông tin người dùng, giỏ hàng, cấu hình, v.v.
+
+✅ 2. Thunk Middleware (redux-thunk)
+👉 Là middleware giúp bạn xử lý async logic (bất đồng bộ) trong Redux, như gọi API.
+
+Bình thường dispatch chỉ nhận object, nhưng redux-thunk cho phép bạn dispatch function (gọi API xong mới tiếp tục dispatch action khác).
+
+📌 Dùng khi:
+
+Bạn cần lấy dữ liệu từ server rồi lưu vào Redux Store (như gọi API danh sách sản phẩm).
+
+✅ 3. react-redux
+👉 Là thư viện kết nối React với Redux.
+
+Cung cấp các hook như useSelector, useDispatch, Provider để dễ dàng dùng Redux trong React.
+
+Là cầu nối giúp component React đọc và cập nhật dữ liệu từ store Redux.
+
+📌 Dùng khi:
+
+Bạn đang dùng Redux trong app React – cần react-redux để kết nối chúng.
+
+✅ 4. react-router-dom
+👉 Dùng để quản lý routing (định tuyến) trong ứng dụng React.
+
+Cho phép bạn tạo nhiều trang (URL) trong ứng dụng SPA (Single Page Application) như: /home, /product/:id, /login…
+
+Cung cấp Route, Link, useNavigate, useParams, v.v.
+
+📌 Dùng khi:
+
+Bạn muốn app React có nhiều page (giao diện theo đường dẫn khác nhau).
+
+✅ 5. Tailwind CSS
+👉 Là framework CSS utility-first – viết CSS bằng class ngay trong HTML/JSX.
+
+Không cần viết CSS riêng, chỉ cần dùng class: bg-red-500, text-white, flex, p-4, v.v.
+
+Rất linh hoạt, gọn, dễ dùng và dễ responsive.
+
+📌 Dùng khi:
+
+Bạn muốn làm giao diện đẹp, responsive nhanh, dễ tùy biến.
+
+✅ 6. MUI (Material UI)
+👉 Bộ component UI được xây dựng theo chuẩn Material Design của Google.
+
+Cung cấp sẵn button, dialog, table, form, v.v. đẹp mắt và responsive.
+
+Có thể tuỳ chỉnh theme, dễ tích hợp.
+
+📌 Dùng khi:
+
+Bạn muốn có sẵn giao diện đẹp, đồng nhất, không cần tự tay viết CSS nhiều.
+
+✅ 7. react-icons
+👉 Thư viện icon dành cho React, tập hợp nhiều bộ icon nổi tiếng như FontAwesome, Material Icons, HeroIcons…
+
+Dùng cực dễ: import { FaBeer } from 'react-icons/fa', sau đó <FaBeer />
+
+📌 Dùng khi:
+
+Bạn cần icon đẹp, nhanh chóng và tích hợp tốt với JSX.
+
+============================================================================================================================================================================ 
+
+- Cài đặt mui ( Bộ component UI được xây dựng theo chuẩn Material Design của Google )
+- Cung cấp sẵn button, dialog, table, form, v.v. đẹp mắt và responsive
+
+    npm install @mui/material @emotion/react @emotion/styled  
+    https://mui.com/material-ui/getting-started/installation/#icons
+
+ 
+- Bộ cung cụ icon của react: 
+   npm install react-icons --save
+   https://react-icons.github.io/react-icons/
+====================================================================================================================================================================
+
+    
+shift + alt + f 
+
+================================================================================================================================================== 
+- Khai báo một biến đóng và một biến mở profile như sau: 
+        const [isProfile, setisProfile] = useState(false);
+
+- Khi ấn vào cái ảnh: 
+                  onClick={handleNavigate}
+
+                  const handleNavigate = () => {
+
+                        setisProfile(true);    => True thì cho phép isProfile đóng lại. 
+                  };
+- Cái trang hiện tại đóng lại , cái trang mới hiện lên với tham số truyền vào hàm là               
+                  <Profile handleOpenCloseProfile={handleOpenCloseProfile}/>
+
+    + Sau khi có cái handleOpenCloseProfile là một cái function: 
+                    const handleOpenCloseProfile = () => {
+                        setisProfile(false);  => Nó không render ngay mà  
+                    }
+
+                            <button
+                            onClick={handleOpenCloseProfile}
+                            className="p-2 transition-colors duration-200 rounded-full hover:bg-indigo-900"
+                            >
+             
+
