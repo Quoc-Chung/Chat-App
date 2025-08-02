@@ -15,6 +15,7 @@ export const createChat = (chatData) => async (dispatch) => {
 
     const data = await res.json();
     dispatch({ type: CREATE_CHAT, payload: data });
+    chatData.onSuccess?.(data);
   } catch (error) {
     console.error("Error creating chat:", error);
   }
@@ -64,3 +65,4 @@ export const getUserChat = (chatData) => async (dispatch) => {
     console.error("Error getting user chats:", error);
   }
 };
+

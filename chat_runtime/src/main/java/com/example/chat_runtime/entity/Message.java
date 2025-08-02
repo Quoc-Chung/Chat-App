@@ -21,6 +21,10 @@ public class Message  {
   private Integer id;
 
   private String content;
+
+  private String audio;
+
+  private String type;
   @CreatedDate
   private LocalDateTime timestamp;
 

@@ -9,7 +9,7 @@ const UserAddGroup = ({user}) => {
         <img
           className="border border-blue-500 rounded-full w-9 h-9"
           src={
-             user.profilePicture ? `${BASE_API_URL}/uploads/${user.profilePicture}`
+             user.profilePicture ? user.profilePicture
              : "https://cdn-media.sforum.vn/storage/app/media/Van%20Pham/5/5b/anh-ac-quy-anime-53.jpg"
             
           }   

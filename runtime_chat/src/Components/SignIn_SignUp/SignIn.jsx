@@ -5,7 +5,7 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Swal from "sweetalert2";
 import { FcGoogle } from "react-icons/fc";
-import { FaFacebookF } from "react-icons/fa";
+import { FaFacebookF, FaGithub } from "react-icons/fa";
 import { login, forgotPassword,currentUser } from "../../Redux/Auth/Action";
 const SignIn = () => {
   const navigate = useNavigate();
@@ -44,9 +44,7 @@ const SignIn = () => {
         }
       )
     );
-    
-    
-    
+
   };
 
   const handleForgotPassword = () => {
@@ -68,17 +66,35 @@ const SignIn = () => {
 };
 
 
-  useEffect(() => {
-    if (token) {
-      dispatch(currentUser(token));
-    }
-  }, [token, dispatch]);
+
 
   useEffect(() => {
     if (auth.reqUser?.fullname) {
       navigate("/");
     }
   }, [auth.reqUser, navigate]);
+
+
+
+    const googleLogin = () => {
+    localStorage.removeItem('token');
+    sessionStorage.clear();
+    window.location.href = "http://localhost:8080/oauth2/authorization/google";
+  };
+
+
+
+  const gitHubLogin = () => {
+    localStorage.removeItem('token');
+    sessionStorage.clear();
+    window.location.href = "http://localhost:8080/oauth2/authorization/github";
+  };
+
+    useEffect(() => {
+    if (token) {
+      dispatch(currentUser(token));
+    }
+  }, [token]);
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-100 to-blue-300">
@@ -141,7 +157,7 @@ const SignIn = () => {
         <div className="flex items-center justify-center gap-4">
           <button
             className="flex items-center justify-center w-full gap-2 px-4 py-2 text-sm font-medium text-gray-800 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
-            onClick={() => alert("Đăng nhập Google")}
+            onClick={googleLogin}
           >
             <FcGoogle className="text-xl" />
             Google
@@ -149,10 +165,10 @@ const SignIn = () => {
 
           <button
             className="flex items-center justify-center w-full gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-            onClick={() => alert("Đăng nhập Facebook")}
+            onClick={gitHubLogin}
           >
-            <FaFacebookF className="text-xl" />
-            Facebook
+            <FaGithub className="text-xl" />
+            GitHub
           </button>
         </div>
 

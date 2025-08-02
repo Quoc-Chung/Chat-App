@@ -5,12 +5,11 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.ManyToMany;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import jakarta.persistence.*;
@@ -24,6 +23,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 @EntityListeners(AuditingEntityListener.class)
 public class User  {
     @Id
@@ -43,6 +43,12 @@ public class User  {
     private String password;
 
     private String bio;
+
+
+    private String provider;
+
+    private String providerId;
+
 
     @CreatedDate
     @Column(name = "created_at", updatable = false)

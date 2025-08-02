@@ -1,16 +1,13 @@
 package com.example.chat_runtime.service;
 
 import com.example.chat_runtime.dto.request.GroupChatRequest;
+import com.example.chat_runtime.dto.response.MessageChatFinal;
 import com.example.chat_runtime.entity.Chat;
 import com.example.chat_runtime.entity.User;
 import com.example.chat_runtime.exceptions.ChatException;
 import com.example.chat_runtime.exceptions.UserException;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
-import java.util.UUID;
 import org.springframework.web.multipart.MultipartFile;
 
 
@@ -20,7 +17,7 @@ public interface ChatService {
 
        Chat findChatById(Integer id) throws ChatException;
 
-       List<Chat> findAllChatByUserId(Integer userId) throws UserException;
+       List<Chat> findAllChatByUserId(Integer userId) throws UserException, ChatException;
 
        Chat createGroup(GroupChatRequest req , User reqUser, String filename) throws  UserException;
 
@@ -34,4 +31,6 @@ public interface ChatService {
        Chat removeUserFromGroup(Integer chatId, Integer userId, User reqUser) throws  UserException , ChatException;
 
        void deleteChat(Integer chatId, Integer userId) throws ChatException  , UserException;
+
+       MessageChatFinal  findChatMessageFinal(User reqUser,Chat chat);
 }

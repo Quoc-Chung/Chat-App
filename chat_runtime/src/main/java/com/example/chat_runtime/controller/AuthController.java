@@ -15,6 +15,7 @@ import com.example.chat_runtime.service.AuthService;
 import com.example.chat_runtime.service.CustomUserService;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -28,6 +29,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+@Slf4j
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
@@ -37,6 +39,9 @@ public class AuthController {
    private final TokenProvider tokenProvider;
    private final CustomUserService customUserService;
    private final AuthService authService;
+
+
+
 
   /*- Đăng kí -*/
   @PostMapping("/signup")
@@ -57,7 +62,6 @@ public class AuthController {
 
     Authentication auth = authenticate(email, password);
     SecurityContextHolder.getContext().setAuthentication(auth);
-
     String token = tokenProvider.generateToken(auth);
     AuthResponse authResponse = new AuthResponse(token , true);
     return new ResponseEntity<>(authResponse, HttpStatus.OK);
@@ -87,7 +91,8 @@ public class AuthController {
    }
    /*==================================================================================================================*/
 
-  @PostMapping("/forgot-password")
+
+   @PostMapping("/forgot-password")
   public ResponseEntity<OtpResponse> sendOtp(@RequestBody SendOtpRequest request) {
     return authService.sendOtp(request);
   }

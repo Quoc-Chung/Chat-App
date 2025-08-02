@@ -73,7 +73,7 @@ public class Chat  {
   )
   private Set<User> users = new HashSet<>();
 
-  @OneToMany(mappedBy = "chat", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+  @OneToMany(mappedBy = "chat", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
   @JsonIgnore
   private List<Message> messages = new ArrayList<>();
 }

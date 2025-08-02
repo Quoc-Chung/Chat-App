@@ -7,6 +7,7 @@ import SignIn from "./Components/SignIn_SignUp/SignIn";
 import SignUp from "./Components/SignIn_SignUp/SignUp";
 import { ToastContainer } from "react-toastify";
 import VerifyOtpAndResetPassword from "./Components/ForgotPassword/VerifyOtpAndResetPassword";
+import OAuth2Success from "./Components/Auth/OAuth2Success";
 const App = () => {
   return (
     <div>
@@ -18,6 +19,8 @@ const App = () => {
         <Route path="status/:userId" element={<StatusViewer />}>
           {" "}
         </Route>
+
+        <Route path="/oauth2-success" element={<OAuth2Success />} />
         <Route path="/signin"  element={<SignIn />}/>
 
         <Route path="/signup" element={<SignUp />}/>
