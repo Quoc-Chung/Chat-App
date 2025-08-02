@@ -1,21 +1,31 @@
 package com.example.chat_runtime.service.impl;
 
+import com.cloudinary.Cloudinary;
+import com.cloudinary.utils.ObjectUtils;
 import com.example.chat_runtime.dto.request.GroupChatRequest;
+import com.example.chat_runtime.dto.response.MessageChatFinal;
 import com.example.chat_runtime.entity.Chat;
+import com.example.chat_runtime.entity.Message;
 import com.example.chat_runtime.entity.User;
 import com.example.chat_runtime.exceptions.ChatException;
 import com.example.chat_runtime.exceptions.UserException;
 import com.example.chat_runtime.repository.ChatRepository;
 import com.example.chat_runtime.repository.UserRepository;
 import com.example.chat_runtime.service.ChatService;
+import com.example.chat_runtime.service.MessageService;
 import com.example.chat_runtime.service.UserService;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
 import java.util.List;
 
+import java.util.Map;
 import java.util.UUID;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -23,7 +33,7 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 @RequiredArgsConstructor
 public class ChatServiceImpl  implements ChatService {
-
+  private final Cloudinary cloudinary;
   private final ChatRepository chatRepository;
 
   private final UserService userService;
@@ -70,7 +80,7 @@ public class ChatServiceImpl  implements ChatService {
    * (bao gồm cả chat nhóm và chat 1-1).
    */
   @Override
-  public List<Chat> findAllChatByUserId(Integer userId) throws UserException {
+  public List<Chat> findAllChatByUserId(Integer userId) throws UserException, ChatException {
     User user = userService.findUserById(userId);
     List<Chat> chats =  chatRepository.findChatByUserId(user.getId());
     return chats;
@@ -102,14 +112,8 @@ public class ChatServiceImpl  implements ChatService {
 
   @Override
   public  String saveFile(MultipartFile file) throws IOException {
-    String uploadPath = Paths.get(System.getProperty("user.dir"), "uploads").toString();
-    Files.createDirectories(Paths.get(uploadPath));
-
-    String filename = UUID.randomUUID() + "_" + file.getOriginalFilename();
-    Path filePath = Paths.get(uploadPath, filename);
-
-    file.transferTo(filePath.toFile());
-    return filename;
+    Map uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.emptyMap());
+    return uploadResult.get("secure_url").toString();
   }
 
   /**
@@ -209,4 +213,21 @@ public class ChatServiceImpl  implements ChatService {
         .orElseThrow(() -> new ChatException("Chat not found with id: " + chatId));
     chatRepository.deleteById(chat.getId());
   }
+  @Override
+  public MessageChatFinal findChatMessageFinal(User reqUser, Chat chat) {
+    MessageChatFinal messageChatFinal = new MessageChatFinal();
+
+    List<Message> messages = chat.getMessages();
+    if (messages == null || messages.isEmpty()) {
+
+      return null;
+    }
+    Message message = messages.get(messages.size() - 1);
+    messageChatFinal.setChat_id(chat.getId());
+    messageChatFinal.setFinal_content(message.getContent());
+    messageChatFinal.setNameSendFinalMessage(message.getUser().getFullname());
+    messageChatFinal.setTimestamp(message.getTimestamp());
+    return messageChatFinal;
+  }
+
 }

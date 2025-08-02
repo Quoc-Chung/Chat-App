@@ -3,12 +3,15 @@ package com.example.chat_runtime.controller;
 import com.example.chat_runtime.dto.request.GroupChatRequest;
 import com.example.chat_runtime.dto.request.SingleChatRequest;
 import com.example.chat_runtime.dto.response.ApiResponse;
+import com.example.chat_runtime.dto.response.MessageChatFinal;
 import com.example.chat_runtime.entity.Chat;
 import com.example.chat_runtime.entity.User;
 import com.example.chat_runtime.exceptions.ChatException;
 import com.example.chat_runtime.service.ChatService;
+import com.example.chat_runtime.service.MessageService;
 import com.example.chat_runtime.service.UserService;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -31,6 +34,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class ChatController {
   private final ChatService chatService;
   private final UserService userService;
+  private final MessageService messageService;
 
   @PostMapping("/singlechat")
   public ResponseEntity<Chat> createChatHandle(@RequestBody SingleChatRequest singleChatRequest , @RequestHeader("Authorization") String jwt){
@@ -54,7 +58,6 @@ public class ChatController {
     String filename = null;
     if (file != null && !file.isEmpty()) {
       filename = chatService.saveFile(file);
-
   }
 
     Chat createGroupChat = chatService.createGroup(req, reqUser, filename);
@@ -71,6 +74,7 @@ public class ChatController {
   @GetMapping("/{chatId}")
   public ResponseEntity<Chat> findChatByIdHandle(@PathVariable Integer chatId,
       @RequestHeader("Authorization") String jwt)  throws ChatException {
+    User reqUser = userService.findUserProfile(jwt);
     Chat chat = chatService.findChatById(chatId);
     return new ResponseEntity<>(chat, HttpStatus.OK);
   }
@@ -81,6 +85,29 @@ public class ChatController {
     User reqUser = userService.findUserProfile(jwt);
     List<Chat> chats  = chatService.findAllChatByUserId(reqUser.getId());
     return new ResponseEntity<>(chats, HttpStatus.OK);
+  }
+  @GetMapping("/messageFinal/{chatId}")
+  public ResponseEntity<MessageChatFinal> getChatMessageFinal(
+      @RequestHeader("Authorization") String jwt,
+      @PathVariable Integer chatId)  throws ChatException {
+      User reqUser = userService.findUserProfile(jwt);
+      Chat chat = chatService.findChatById(chatId);
+
+      MessageChatFinal result = chatService.findChatMessageFinal(reqUser, chat);
+      return new  ResponseEntity<>(result, HttpStatus.OK);
+  }
+
+  @GetMapping ("/listmessagefinal")
+  public ResponseEntity<List<MessageChatFinal>> getChatMessageFinalList(
+      @RequestHeader("Authorization") String jwt
+  ) throws ChatException {
+    User reqUser = userService.findUserProfile(jwt);
+    List<Chat> chats  = chatService.findAllChatByUserId(reqUser.getId());
+    List<MessageChatFinal> lstMessageFinal = new ArrayList<>();
+    for(Chat chat : chats){
+      lstMessageFinal.add(chatService.findChatMessageFinal(reqUser, chat));
+    }
+     return new ResponseEntity<>(lstMessageFinal, HttpStatus.OK);
   }
 
     @PutMapping("{chatId}/add/{userId}")

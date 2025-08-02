@@ -148,7 +148,6 @@ export const updateUser = (formData, onSuccess, onError) => {
       const res = await fetch(`${BASE_API_URL}/api/users/update`, {
         method: "PUT",
         headers: {
-          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`, 
         },
         body: formData,

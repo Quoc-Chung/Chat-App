@@ -3,48 +3,50 @@ package com.example.chat_runtime.config;
 import static org.springframework.security.config.Customizer.withDefaults;
 
 
+import com.example.chat_runtime.service.CustomOAuth2UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
-import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class AppConfig {
-  private  final CorsConfig corsConfig;
+  private final CustomOAuth2UserService customOAuth2UserService;
+  private final OAuth2SuccessHandler oAuth2SuccessHandler;
   @Bean
   public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
     http
-        /* Tắt CSRF vì ứng dụng dạng REST không cần CSRF protection */
+
         .csrf().disable()
 
-        /* Tắt session: Mỗi request đều phải mang theo token (JWT), không lưu login trong session */
+
         .sessionManagement()
         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
         .and()
 
-        /* Cấu hình quyền truy cập cho các endpoint */
+
         .authorizeHttpRequests(auth -> auth
             .requestMatchers("/api/**").authenticated()
             .anyRequest().permitAll()
         )
-        /*- Thêm một bộ lọc trước mỗi requuest -*/
+        .oauth2Login(oauth2 -> oauth2
+            .userInfoEndpoint(userInfo -> userInfo
+                .userService(customOAuth2UserService))
+            .successHandler(oAuth2SuccessHandler)
+            .loginPage("/signin")
+        )
         .addFilterBefore(new JwtAuthenticationFilter(), BasicAuthenticationFilter.class)
-        /* ✅ Cho phép dùng login form (không cần thiết nếu dùng JWT nhưng để minh họa vẫn có) */
+
         .formLogin()
         .and()
         .cors(withDefaults())
-        /* ✅ Cho phép basic auth (ví dụ: Authorization: Basic base64(username:password)) */
         .httpBasic();
 
     return http.build();
@@ -55,10 +57,10 @@ public class AppConfig {
     return new JwtAuthenticationFilter();
   }
 
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-      return new BCryptPasswordEncoder();
-    }
+
+
+
+
 
 }
 

@@ -21,7 +21,8 @@ const Profile = ({ handleOpenCloseProfile, user }) => {
 
   console.log("reqUser:", reqUser);
 
-  const handleChange = (e) => {
+  const handleChange = async (e) => {
+    
     const { name, value, files } = e.target;
     if (name === "profilePicture") {
       const file = files[0];
@@ -30,7 +31,8 @@ const Profile = ({ handleOpenCloseProfile, user }) => {
           toast.warn("Vui lòng chọn file ảnh!");
           return;
         }
-        setFormData({ ...formData, profilePicture: file });
+      
+        setFormData({ ...formData, profilePicture: file});
         const reader = new FileReader();
         reader.onloadend = () => {
           setPreviewImage(reader.result);
@@ -45,68 +47,68 @@ const Profile = ({ handleOpenCloseProfile, user }) => {
     }
   };
 
-const handleSubmitField = (field) => {
-  const form = new FormData();
-  const userInfo = {};
+  const handleSubmitField = (field) => {
+    const form = new FormData();
+    const userInfo = {};
 
-  if (field === "profilePicture") {
-    if (!formData.profilePicture) {
-      toast.warn("Bạn chưa chọn ảnh mới!");
-      return;
+    if (field === "profilePicture") {
+      if (!formData.profilePicture) {
+        toast.warn("Bạn chưa chọn ảnh mới!");
+        return;
+      }
+      form.append("profile_picture", formData.profilePicture);
+      userInfo.full_name = reqUser.fullname;
+      userInfo.bio = reqUser.bio;
     }
-    form.append("profile_picture", formData.profilePicture);
-    userInfo.full_name = reqUser.fullname;
-    userInfo.bio = reqUser.bio;
-  }
 
-  if (field === "fullname") {
-    if (!formData.fullname.trim()) {
-      toast.warn("Tên không được để trống!");
-      return;
+    if (field === "fullname") {
+      if (!formData.fullname.trim()) {
+        toast.warn("Tên không được để trống!");
+        return;
+      }
+      userInfo.full_name = formData.fullname;
+      userInfo.bio = reqUser.bio;
     }
-    userInfo.full_name = formData.fullname;
-    userInfo.bio = reqUser.bio;
-  }
 
-  if (field === "bio") {
-    if (!formData.bio.trim()) {
-      toast.warn("Tiểu sử không được để trống!");
-      return;
+    if (field === "bio") {
+      if (!formData.bio.trim()) {
+        toast.warn("Tiểu sử không được để trống!");
+        return;
+      }
+      userInfo.full_name = reqUser.fullname;
+      userInfo.bio = formData.bio;
     }
-    userInfo.full_name = reqUser.fullname;
-    userInfo.bio = formData.bio;
-  }
 
-  form.append("data", new Blob([JSON.stringify(userInfo)], { type: "application/json" }));
+    form.append("data", new Blob([JSON.stringify(userInfo)], { type: "application/json" }));
 
-  dispatch(
-    updateUser(
-      form,
-      (resData) => {
-        toast.success(
-          `${field === "profilePicture"
-            ? "Ảnh đại diện"
-            : field === "fullname"
-              ? "Tên"
-              : "Tiểu sử"
-          } cập nhật thành công!`
-        );
+    dispatch(
+      updateUser(
+        form,
+        (resData) => {
+          toast.success(
+            `${field === "profilePicture"
+              ? "Ảnh đại diện"
+              : field === "fullname"
+                ? "Tên"
+                : "Tiểu sử"
+            } cập nhật thành công!`
+          );
 
-        setFormData({
-          ...formData,
-          fullname: resData.data?.full_name || formData.fullname,
-          bio: resData.data?.bio || formData.bio,
-          profilePicture: null,
-        });
+          setFormData({
+            ...formData,
+            fullname: resData.data?.full_name || formData.fullname,
+            bio: resData.data?.bio || formData.bio,
+            profilePicture: null,
+          });
 
-        if (field === "fullname") setIsEditingName(false);
-        if (field === "bio") setIsEditingBio(false);
-        if (field === "profilePicture") setPreviewImage(null);
-      },
-      (err) => toast.error(`Lỗi cập nhật ${field}: ${err}`)
-    )
-  );
-};
+          if (field === "fullname") setIsEditingName(false);
+          if (field === "bio") setIsEditingBio(false);
+          if (field === "profilePicture") setPreviewImage(null);
+        },
+        (err) => toast.error(`Lỗi cập nhật ${field}: ${err}`)
+      )
+    );
+  };
 
   const handleEditName = () => {
     setIsEditingName(true);
@@ -166,7 +168,7 @@ const handleSubmitField = (field) => {
                       className="object-cover object-center w-full h-full"
                       src={
                         reqUser?.profilePicture
-                          ? `${BASE_API_URL}/uploads/${reqUser.profilePicture}?t=${Date.now()}`
+                          ? reqUser.profilePicture
                           : "https://i.pinimg.com/736x/81/4f/75/814f75414eda6651e2db3ee9a4e5efcf.jpg"
                       }
                       alt="Profile avatar"

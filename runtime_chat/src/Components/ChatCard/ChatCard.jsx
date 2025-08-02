@@ -1,14 +1,17 @@
 import React from "react";
 import { BASE_API_URL } from "../../config/Api";
 
-const ChatCard = ({ name, userImage}) => {
+const ChatCard = ({
+  name,
+  userImage,
+  timestamp,
+  unreadCount = 0,
+}) => {
   return (
     <div className="flex items-center px-3 py-2 mx-1 my-0.5 bg-white rounded-lg shadow-md cursor-pointer group hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 ease-in-out border border-gray-100">
       <div className="w-[20%]">
         <img
-          src={
-             `${BASE_API_URL}/uploads/${userImage}`
-          }
+          src={userImage ? userImage : `${BASE_API_URL}/images/default-avatar.png`}
           className="object-cover w-12 h-12 transition-transform duration-200 border-2 border-indigo-200 rounded-full group-hover:scale-105"
           alt="User avatar"
         />
@@ -18,43 +21,32 @@ const ChatCard = ({ name, userImage}) => {
           <p className="text-base font-semibold text-gray-800 transition-colors duration-200 group-hover:text-indigo-600">
             {name}
           </p>
-          
-          {/* Thời gian của tin nhắn lần cuối  */}
           <p className="text-xs text-gray-500 group-hover:text-gray-600">
-            timestamp
+            {timestamp ? new Date(timestamp).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }) : ""}
           </p>
         </div>
         <div className="flex items-center justify-between mt-0.5">
-          {/* Hiển thị tin nhắn cuối cùng của người đó */}
           <p className="text-sm text-gray-600 text-ellipsis overflow-hidden whitespace-nowrap max-w-[70%]">
-            message...
+              messsage
+
+
+
           </p>
-          <div className="flex items-center space-x-1.5">
-            <p className="px-2 py-0.5 text-xs font-medium text-white bg-green-500 rounded-full group-hover:bg-green-600 transition-colors duration-200">
-              5
-            </p>
-          </div>
+          {unreadCount > 0 && (
+            <div className="flex items-center space-x-1.5">
+              <p className="px-2 py-0.5 text-xs font-medium text-white bg-green-500 rounded-full group-hover:bg-green-600 transition-colors duration-200">
+                {unreadCount}
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 };
 
+
 export default ChatCard;
-
-
-// email
-// : 
-// "tuquocchung@gmail.com"
-// fullname
-// : 
-// "Tu Quoc Chung"
-// id
-// : 
-// 1
-// password
-// : 
-// "$2a$10$C60nwpRj2UsoHZPPL1XeX.yLSf0waU7LxKxsWTCGMae4HFKvIF7kW"
-// profilePicture
-// : 
-// null

@@ -4,6 +4,7 @@ const initialState = {
   chats: [],
   createGroup: null,
   createChat: null,
+
 };
 
 export const chatReducer = (state = initialState, action) => {
@@ -14,6 +15,9 @@ export const chatReducer = (state = initialState, action) => {
       return { ...state, createGroup: action.payload };
     case GET_USERS_CHAT:
       return { ...state, chats: action.payload };
+ 
+
+    
     default:
       return state;
   }

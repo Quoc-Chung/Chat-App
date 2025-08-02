@@ -13,5 +13,4 @@ public class UpdateResponse {
   private LocalDate birthday;
   private String bio;
   private String profilePicture;
-
 }

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { use, useDebugValue, useEffect, useRef } from "react";
 import ChatCard from "./ChatCard/ChatCard";
 import { useState } from "react";
 import MessageCard from "./MessageCard/MessageCard";
@@ -18,127 +18,212 @@ import { BASE_API_URL } from "../config/Api";
 import { createMessage, getAllMessage } from "../Redux/Message/Action";
 import EmojiPicker from "emoji-picker-react";
 import { Client } from "@stomp/stompjs";
-
+import ChatInfo from "./ChatCard/ChatInfo";
 
 const HomePage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const bottomRef = useRef(null);
-  const clientRef = useRef(null);
 
+  const [infoChat, setInfoChat] = useState(false);
   const [querys, setQuerys] = useState("");
   const [currentChat, setCurrentChat] = useState(null);
-
-  /* - Nội dung tin nhắn -*/
   const [content, setContent] = useState("");
-
   const [isProfile, setisProfile] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const [showWelcome, setShowWelcome] = useState(false);
-
-  const open = Boolean(anchorEl);
-  const { auth, chat, message } = useSelector((state) => state);
-  const token = localStorage.getItem("token");
-  /*- hiển thị icon  -*/
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  /* - hiển thị group true  thì hiển thị , còn false thì không hiển thị */
   const [isgroup, setIsGroup] = useState(false);
+  const [stompClient, setStompClient] = useState(null);
+
+  const auth = useSelector((state) => state.auth);
+  const chat = useSelector((state) => state.chat);
+  const message = useSelector((state) => state.message);
+
+  const token = localStorage.getItem("token");
+  const open = Boolean(anchorEl);
+
+  const [messagesSocketSendIndividual, setmessagesSocketSendIndividual] = useState([]);
+  const [messagesSocketSendGroup, setmessagesSocketSendGroup] = useState([]);
+  const [messagesSocketReceiveIndividual, setmessagesSocketReceiveIndividual] = useState([]);
+  const [messagesSocketReceiveGroup, setmessagesSocketReceiveGroup] = useState([]);
+  const [allMessageSocket, setAllMessageSocket] = useState([]);
 
 
-  const [isConnect, setIsConnect] = useState(false);
-  const [messagesSocket, setMessagesSocket] = useState([]);
+  console.log("Dannh sach chat nguoi dung tham gia : ", chat.chats);
+
+
+  useEffect(() => {
+    if (messagesSocketSendIndividual.length === 0) return;
+
+    const latest = messagesSocketSendIndividual[messagesSocketSendIndividual.length - 1];
+    setAllMessageSocket(prev => [...prev, latest]);
+  }, [messagesSocketSendIndividual]);
+
+  useEffect(() => {
+    if (messagesSocketSendGroup.length === 0) return;
+
+    const latest = messagesSocketSendGroup[messagesSocketSendGroup.length - 1];
+    setAllMessageSocket(prev => [...prev, latest]);
+  }, [messagesSocketSendGroup]);
+
+
+  useEffect(() => {
+    if (messagesSocketReceiveIndividual.length === 0) return;
+
+    const latest = messagesSocketReceiveIndividual[messagesSocketReceiveIndividual.length - 1];
+    setAllMessageSocket(prev => [...prev, latest]);
+  }, [messagesSocketReceiveIndividual]);
+
+  useEffect(() => {
+    if (messagesSocketReceiveGroup.length === 0) return;
+
+    const latest = messagesSocketReceiveGroup[messagesSocketReceiveGroup.length - 1];
+    setAllMessageSocket(prev => [...prev, latest]);
+  }, [messagesSocketReceiveGroup]);
+
+
+
+
+  useEffect(() => {
+
+    setAllMessageSocket(message.messages);
+  }, [message.messages]);
+
+
+
+
+
   
 
-  const connectWebSocket = () => {
-    if (!token || token.trim() === "") {
-      console.error("Không có token hợp lệ, không kết nối WebSocket");
-      return;
-    }
+  const connectWebSocket = (token) => {
     const client = new Client({
       brokerURL: 'ws://localhost:8080/ws',
       connectHeaders: {
         Authorization: `Bearer ${token}`
       },
-      debug: (str) => console.log('STOMP:', str),
+      debug: (str) => console.log("[STOMP]", str),
       reconnectDelay: 5000,
-      heartbeatIncoming: 4000,
-      heartbeatOutgoing: 4000
+      onConnect: (frame) => {
+        console.log("✅ Connected:", frame);
+
+
+        client.subscribe("/user/queue/messages", (msg) => {
+          try {
+            const messageData = JSON.parse(msg.body);
+            console.log("Nhận tin nhắn:", messageData);
+            setmessagesSocketReceiveIndividual(prev => [...prev, messageData]);
+          } catch (error) {
+            console.error("Lỗi khi parse tin nhắn:", error);
+          }
+        });
+  
+        chat.chats
+          .filter(chat => chat.group)
+          .forEach(groupChat => {
+            client.subscribe(`/group/${groupChat.id}`, (msg) => {
+              try {
+                const messageData = JSON.parse(msg.body);
+                console.log("Tin nhắn nhóm:", messageData);
+                setmessagesSocketReceiveGroup(prev => [...prev, messageData]);
+              } catch (error) {
+                console.error("Lỗi parse nhóm:", error);
+              }
+            });
+          });
+        setStompClient(client);
+      },
+      onStompError: (frame) => {
+        console.error("STOMP Error:", frame.headers['message']);
+        console.error("Chi tiết:", frame.body);
+      },
+      onWebSocketClose: (event) => {
+        console.warn("WebSocket bị đóng:", event.reason || event);
+      },
+      onDisconnect: () => {
+        console.warn("WebSocket đã bị ngắt kết nối");
+      }
     });
-
-    client.onConnect = (frame) => {
-      console.log('WebSocket Connected!');
-      setIsConnect(true)
-
-    };
-
-    client.onStompError = (frame) => {
-      console.error('WebSocket Error:', frame.headers.message);
-      setIsConnect(false);
-    };
-
     client.activate();
-    clientRef.current = client;
-  };
-
+  }
 
   useEffect(() => {
-    if (!token || token === "undefined" || token === "null") {
-      console.warn("Token không hợp lệ. Không gọi connectWebSocket.");
-      return;
+    console.log("🔁 useEffect chạy");
+    if (token && token !== "undefined" && token !== "null") {
+      connectWebSocket(token);
     }
-    connectWebSocket();
-    return () => {
-      if (clientRef.current) {
-        clientRef.current.deactivate();
-      }
-    };
   }, []);
 
 
-  const disconnectWebSocket = () => {
-    if (clientRef.current) {
-      console.log('Manually disconnecting WebSocket...');
-      clientRef.current.deactivate();
-      clientRef.current = null;
-      setIsConnect(false);
-    }
-  };
+  
+  const handleCreateNewMessage = () => {
+    if (!stompClient || !currentChat) return;
 
+    const messageData = {
+      content: content.trim(),
+      user: auth.reqUser,
+      timestamp: new Date().toISOString(),
+      chat: currentChat,
+    };
+    const destination = currentChat.group
+      ? "/app/group.message"
+      : "/app/private.message";
+
+
+    stompClient.publish({
+      destination: destination,
+      body: JSON.stringify(messageData)
+    });
+    dispatch(createMessage({
+      token: token,
+      data: {
+        chatId: currentChat.id,
+        content: content
+      }
+    }));
+    if (currentChat.group) {
+      setmessagesSocketSendGroup(prev => [...prev, messageData]);
+    }
+    else {
+      setmessagesSocketSendIndividual(prev => [...prev, messageData]);
+    }
+
+    setTimeout(() => {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 50);
+    setContent("");
+  };
 
 
   const handleSearch = (keyword) => {
     dispatch(searchUser({ keyword, token }));
   };
-  const handleNavigate = () => {
-    setisProfile(true);
-  };
-  const handleOpenCloseProfile = () => {
-    setisProfile(false);
-  };
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
-  const handleClickMenuMore = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
+
+  const handleNavigate = () => setisProfile(true);
+  const handleOpenCloseProfile = () => setisProfile(false);
+  const handleClose = () => setAnchorEl(null);
+  const handleClickMenuMore = (event) => setAnchorEl(event.currentTarget);
+
   const ReturnHome = () => {
     setisProfile(false);
     setIsGroup(false);
     setAnchorEl(null);
   };
 
+  const disconnectWebSocket = () => {
+    if (stompClient && stompClient.connected) {
+      stompClient.deactivate();
+      console.log("🛑 WebSocket disconnected");
+    }
+  };
+
   const handleLogout = () => {
     disconnectWebSocket();
     dispatch(logoutAction());
-    toast.success("logout thành công");
+    toast.success("Đăng xuất thành công");
     navigate("/signin");
-
   };
 
-  /*- Hiển thị ra chatCart hiện tại -*/
-  const handleClickOnChatCart = (userId) => {
-    dispatch(createChat({ token, data: { userId } }));
-  };
 
   useEffect(() => {
     const isNewUser = localStorage.getItem("newlyRegistered");
@@ -153,16 +238,11 @@ const HomePage = () => {
     }
   }, [auth.reqUser]);
 
-  /*- Lấy ra danh sách các  đoạn chat mà người dùng tham gia -*/
   useEffect(() => {
     dispatch(getUserChat({ token }));
   }, [chat.createGroup, chat.createChat]);
 
-
-
-  const handleCreateGroup = () => {
-    setIsGroup(true);
-  };
+  const handleCreateGroup = () => setIsGroup(true);
 
   const handleUpdateInfoUser = () => {
     setShowWelcome(false);
@@ -184,39 +264,44 @@ const HomePage = () => {
   }, [auth.reqUser]);
 
 
-  const handleCurrentChat = (item) => {
-    setCurrentChat(item);
-  }
+  const handleClickOnChatCart = (userId) => {
+    dispatch(createChat({ token, data: { userId },onSuccess: (chatData) => {
+      setCurrentChat(chatData);} }));
 
-
-  /*- Tạo tin nhắn, chạy khi nhấn enter -*/
-  const handleCreateNewMessage = () => {
-    if (!currentChat || !content.trim()) return;
-    dispatch(createMessage({
-      token: token,
-      data: {
-        chatId: currentChat.id,
-        content: content
-      }
-    }));
     setTimeout(() => {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }, 50);
     setContent("");
-
   };
+
+  const handleCurrentChat = (item) => {
+    setCurrentChat(item);
+    console.log("Current chat:", item); 
+     setTimeout(() => {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 50);
+  };
+  
 
   useEffect(() => {
     if (currentChat?.id) {
-      console.log("Current chat : ", currentChat)
-
-      dispatch(getAllMessage({
-
-        chatId: currentChat.id,
-        token: token,
-      }));
+      console.log("Current chat :", currentChat);
+      dispatch(
+        getAllMessage({
+          chatId: currentChat.id,
+          token: token,
+        })
+      );
     }
-  }, [currentChat, message.newMessage])
+  }, [currentChat, message.newMessage]);
+
+  const showInfoChat = () => {
+    setInfoChat(!infoChat);
+  }
+
+
+  console.log("ALL CHAT : ", chat.chats);
+  console.log("Nguoi dung hien tai : ", auth.reqUser);
 
 
 
@@ -263,7 +348,7 @@ const HomePage = () => {
                       className="object-cover object-center w-full h-full"
                       src={
                         auth.reqUser?.profilePicture
-                          ? `${BASE_API_URL}/uploads/${auth.reqUser.profilePicture}`
+                          ? auth.reqUser?.profilePicture
                           : "https://i.pinimg.com/736x/81/4f/75/814f75414eda6651e2db3ee9a4e5efcf.jpg"
                       }
                       alt="Profile Picture"
@@ -374,18 +459,23 @@ const HomePage = () => {
                   : [];
 
                 return filteredUsers.length > 0 ? (
-                  filteredUsers.map((item) => (
-                    <div key={item.id} onClick={() => handleClickOnChatCart(item.id)}>
-                      <hr />
-                      <ChatCard
-                        name={item.fullname}
-                        userImage={
-                          item.profilePicture ||
-                          "https://i.pinimg.com/736x/81/4f/75/814f75414eda6651e2db3ee9a4e5efcf.jpg"
-                        }
-                      />
-                    </div>
-                  ))
+                  filteredUsers.map((item) => {
+
+                    return (
+                      <div key={item.id} onClick={() => handleClickOnChatCart(item.id)}>
+                        <hr />
+                        <ChatCard
+                          user={auth.reqUser.fullname}             
+                          name={item.fullname}
+                          userImage={
+                            item.profilePicture
+                              ? item.profilePicture
+                              : "https://i.pinimg.com/736x/81/4f/75/814f75414eda6651e2db3ee9a4e5efcf.jpg"
+                          }
+                        />
+                      </div>
+                    );
+                  })
                 ) : (
                   <div>
                     <h2 className="text-center font-extralight">Không có kết quả</h2>
@@ -393,29 +483,24 @@ const HomePage = () => {
                 );
               })()}
 
-
-              {/* const ChatCard = ({ name, userImage}) */}
-              {/* Lay ra ca doan chat nhom nua */}
               {chat.chats.length > 0 &&
                 !querys &&
                 chat.chats?.map((item) => (
-                  <div key={item.id} onClick={() => handleCurrentChat(item)}>
+                  <div key={item.id} onClick={() =>  handleCurrentChat(item)}>
                     {" "}
                     <hr />
-
                     {/* CHAT NHÓM */}
                     {item.group ? (
                       <ChatCard
+
                         isChat={true}
                         name={
                           item.chatName
-
                         }
                         userImage={
                           item.chatImage
                         }
                       />
-
                     ) : (
                       // CHAT CA NHAN
                       <ChatCard
@@ -432,6 +517,8 @@ const HomePage = () => {
             </div>
           )}
         </div>
+
+
 
         {/* Page trò chuyện khi nhấn vào một người dùng  */}
         {!currentChat && (
@@ -453,6 +540,9 @@ const HomePage = () => {
             </div>
           </div>
         )}
+
+
+
 
         {/* Header của người bạn */}
         {currentChat && (
@@ -482,7 +572,7 @@ const HomePage = () => {
 
                     ) : (
 
-                      auth.reqUser?.id === currentChat.users[0]?.id ? `${BASE_API_URL}/uploads/${currentChat.users[1]?.profilePicture}` : `${BASE_API_URL}/uploads/${currentChat.users[0]?.profilePicture}`
+                      auth.reqUser?.id === currentChat.users[0]?.id ? currentChat.users[1]?.profilePicture : currentChat.users[0]?.profilePicture
                     )
 
                   }
@@ -510,7 +600,9 @@ const HomePage = () => {
                     alt="search"
                   />
                 </button>
-                <button className="cursor-pointer">
+                <button className="cursor-pointer" onClick={showInfoChat
+
+                }>
                   <img
                     src="src/assets/icon/more.png"
                     className="w-7 h-7"
@@ -520,19 +612,35 @@ const HomePage = () => {
               </div>
             </div>
 
+            {infoChat && (
+              <ChatInfo currentChat={currentChat} auth={auth} setInfoChat={() => setInfoChat(false)} />
+            )}
+
+
+
             {/* Phần viết tin nhắn giữa hai người */}
-            <div className="px-10 h-[91vh] overflow-y-scroll pt-2 pb-15">
+            <div className={`px-10 h-[91vh] overflow-y-scroll pt-2 pb-15 ${infoChat ? "pr-[400px]" : ""}`}>
+
               <div className="flex flex-col justify-center py-2 mt-20 space-y-1 ">
-                {message.messages?.map((item, i) => (
-                  <MessageCard key={i} isReqMessage={item.user.id !== auth.reqUser.id} content={item.content} />
-                ))}
+                {allMessageSocket
+                  .filter((item) => item.chat?.id === currentChat?.id)
+                  .map((item) => (
+                    <MessageCard
+
+                      key={item.timestamp}
+                      isReqMessage={item.user?.id !== auth.reqUser.id}
+                      content={item.content}
+                      isTemp={item.isTemp}
+
+                    />
+                  ))}
 
               </div>
               <div ref={bottomRef} />
             </div>
 
             {/* Phần soạn tin nhắn giữa hai người */}
-            <div className="absolute w-full py-2 text-base bg-gray-100 footer bottom-1">
+            <div className={`absolute w-full py-2 text-base bg-gray-400 footer bottom-0 ${infoChat ? "pr-[380px]" : ""}`}>
               <div className="flex items-center justify-between gap-2 px-4">
                 <div className="flex items-center justify-center gap-1.5">
 
@@ -590,7 +698,9 @@ const HomePage = () => {
                   }}
                 />
                 {/* Nút ghi âm gửi âm thanh  */}
-                <button className="p-1.5 rounded-full hover:bg-gray-200 transition-colors duration-200">
+                <button
+
+                  className="p-1.5 rounded-full hover:bg-gray-200 transition-colors duration-200">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
@@ -605,11 +715,18 @@ const HomePage = () => {
                       d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z"
                     />
                   </svg>
+
                 </button>
+
+
+
               </div>
             </div>
+
+
           </div>
         )}
+
 
       </div>
     </div>

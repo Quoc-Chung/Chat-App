@@ -25,6 +25,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
   @Override
   protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
       FilterChain filterChain) throws ServletException, IOException {
+
     String jwt = request.getHeader("Authorization");
 
     if (jwt != null) {
@@ -41,9 +42,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String username = String.valueOf(claims.get("email"));
         String authorities = String.valueOf(claims.get("authorities"));
-        List<GrantedAuthority> auths = AuthorityUtils.commaSeparatedStringToAuthorityList(authorities);
+        List<GrantedAuthority> auths = AuthorityUtils.commaSeparatedStringToAuthorityList(
+            authorities);
 
-        Authentication authentication = new UsernamePasswordAuthenticationToken(username, null, auths);
+        Authentication authentication = new UsernamePasswordAuthenticationToken(username, null,
+            auths);
         SecurityContextHolder.getContext().setAuthentication(authentication);
       } catch (ExpiredJwtException ex) {
 

@@ -6,16 +6,7 @@ import { toast, ToastContainer } from "react-toastify";
 import { useDispatch, useSelector } from "react-redux";
 import { currentUser, register } from "../../Redux/Auth/Action";
 import Swal from "sweetalert2";
-/*- Trang giao dien dang ky*/ 
 
-/*
-    private String fullname;
-
-    private String email;
-
-    private String password;
-
-*/ 
 const SignUp = () => {
   const navigate = useNavigate();
   const [inputData, setInputData] = useState({

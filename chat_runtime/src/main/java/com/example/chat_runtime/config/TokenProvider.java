@@ -23,16 +23,13 @@ public class TokenProvider {
 
   private final SecretKey key = Keys.hmacShaKeyFor(JwtContant.JWT_SECRET.getBytes(StandardCharsets.UTF_8));
 
-
-
+  /*- Truyền vào token dạng  "Bearer {token}" -*/
   public String getEmailFromToken(String token) {
     try {
       if (!token.startsWith("Bearer ")) {
         throw new AuthenticationServiceException("Invalid token format");
       }
-
       String jwtToken = token.substring(7).trim();
-
       Claims claims = Jwts.parserBuilder()
           .setSigningKey(key)
           .build()

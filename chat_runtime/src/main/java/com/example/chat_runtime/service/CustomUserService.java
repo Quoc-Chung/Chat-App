@@ -18,10 +18,10 @@ public class CustomUserService implements UserDetailsService {
 
   private final UserRepository userRepository;
   @Override
-  public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-    Optional<User> user = userRepository.findByEmail(username);
+  public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+    Optional<User> user = userRepository.findByEmail(email);
     if (user.isEmpty()) {
-      throw new UsernameNotFoundException("User notfound with email: "  + username  );
+      throw new UsernameNotFoundException("User notfound with email: "  + email );
     }
     List<GrantedAuthority> authorities = new ArrayList<>();
     return new org.springframework.security.core.userdetails.User(user.get().getEmail(), user.get().getPassword(), authorities);

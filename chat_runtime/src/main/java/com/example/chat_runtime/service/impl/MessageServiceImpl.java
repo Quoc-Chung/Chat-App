@@ -84,12 +84,10 @@ public class MessageServiceImpl implements MessageService {
   @Override
   public Message deleteMessage(Integer messageId, User userReq) throws MessageException,UserException {
     Message message = findMessageById(messageId);
-    /*- Check xem tin nhan co phai cua minh gui khong -*/
     if(!message.getUser().getId().equals(userReq.getId())) {
       throw new UserException("Bạn không thể xóa tin nhắn của người khác: " + userReq.getFullname());
     }
     messageRepository.deleteById(messageId);
-
     return message;
   }
 }
