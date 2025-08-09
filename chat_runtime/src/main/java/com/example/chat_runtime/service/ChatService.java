@@ -1,6 +1,8 @@
 package com.example.chat_runtime.service;
 
+import com.example.chat_runtime.dto.request.ChatAIRequest;
 import com.example.chat_runtime.dto.request.GroupChatRequest;
+import com.example.chat_runtime.dto.response.ChatAiResponse;
 import com.example.chat_runtime.dto.response.MessageChatFinal;
 import com.example.chat_runtime.entity.Chat;
 import com.example.chat_runtime.entity.User;
@@ -33,4 +35,6 @@ public interface ChatService {
        void deleteChat(Integer chatId, Integer userId) throws ChatException  , UserException;
 
        MessageChatFinal  findChatMessageFinal(User reqUser,Chat chat);
+
+       ChatAiResponse chatAI(ChatAIRequest request);
 }

@@ -58,14 +58,22 @@ export default {
                 transformOrigin: '100% 0%',
                 opacity: '1',
             },
-        }
+        }, typingDots: {
+          "0%, 20%": { content: "' '" },
+          "40%": { content: "'.'" },
+          "60%": { content: "'..'" },
+          "80%, 100%": { content: "'...'" },
+        },
       },
       animation: {
         'bounce-top': 'bounce-top 0.9s both',
         'color-change': 'color-change-5x 8s linear infinite alternate both',
         'scale-in-ver-top': 'scale-in-ver-top 0.5s cubic-bezier(0.250, 0.460, 0.450, 0.940) both',
+        'typingDots': "typingDots 1.2s steps(4, end) infinite"
       },
   },
     },
-  plugins: [],
+  plugins: [
+    require('@tailwindcss/aspect-ratio'),
+  ],
 }

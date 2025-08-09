@@ -44,7 +44,6 @@ public class User  {
 
     private String bio;
 
-
     private String provider;
 
     private String providerId;

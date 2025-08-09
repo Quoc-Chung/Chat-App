@@ -19,6 +19,10 @@ import { createMessage, getAllMessage } from "../Redux/Message/Action";
 import EmojiPicker from "emoji-picker-react";
 import { Client } from "@stomp/stompjs";
 import ChatInfo from "./ChatCard/ChatInfo";
+import { getAllChatFinal } from "../Redux/Chat/Action";
+import MessageCardAi from "./MessageCard/MessageCardAi";
+import { chatWithAi } from "../Redux/Chat/Action";
+import { getImageAspectType } from "../utils/CheckSizeImage";
 
 const HomePage = () => {
   const navigate = useNavigate();
@@ -30,6 +34,7 @@ const HomePage = () => {
   const [currentChat, setCurrentChat] = useState(null);
   const [content, setContent] = useState("");
   const [isProfile, setisProfile] = useState(false);
+  const [isAlChat, setIsAiChat] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const [showWelcome, setShowWelcome] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -48,9 +53,17 @@ const HomePage = () => {
   const [messagesSocketReceiveIndividual, setmessagesSocketReceiveIndividual] = useState([]);
   const [messagesSocketReceiveGroup, setmessagesSocketReceiveGroup] = useState([]);
   const [allMessageSocket, setAllMessageSocket] = useState([]);
+  const [FinalChats, setFinalChats] = useState([]);
+
+  /*- Lưu trữ tin nhắn để hiển thị -*/
+  const [AllAiChat, setAllAiChat] = useState([]);
 
 
   console.log("Dannh sach chat nguoi dung tham gia : ", chat.chats);
+
+
+
+
 
 
   useEffect(() => {
@@ -91,10 +104,27 @@ const HomePage = () => {
   }, [message.messages]);
 
 
+  useEffect(() => {
+    if (token && token !== "undefined" && token !== "null") {
+      dispatch(getAllChatFinal(token));
+    }
+    else {
+      console.warn("Token không hợp lệ khi gọi API getAllChatFinal");
+    }
+
+  }, [token, allMessageSocket]);
+
+  useEffect(() => {
+    setFinalChats(chat.FinalChats);
+  }, [chat.FinalChats])
+  console.log("Danh sach tin nhan cuoi cung : ", FinalChats);
 
 
+  useEffect(() => {
+    setFinalChats(chat.FinalChats);
+  }, [allMessageSocket]);
 
-  
+
 
   const connectWebSocket = (token) => {
     const client = new Client({
@@ -117,7 +147,7 @@ const HomePage = () => {
             console.error("Lỗi khi parse tin nhắn:", error);
           }
         });
-  
+
         chat.chats
           .filter(chat => chat.group)
           .forEach(groupChat => {
@@ -155,7 +185,11 @@ const HomePage = () => {
   }, []);
 
 
+
   
+
+
+
   const handleCreateNewMessage = () => {
     if (!stompClient || !currentChat) return;
 
@@ -265,8 +299,12 @@ const HomePage = () => {
 
 
   const handleClickOnChatCart = (userId) => {
-    dispatch(createChat({ token, data: { userId },onSuccess: (chatData) => {
-      setCurrentChat(chatData);} }));
+    dispatch(createChat({
+      token, data: { userId }, onSuccess: (chatData) => {
+        setCurrentChat(chatData);
+      }
+    }));
+    setIsAiChat(!isAlChat);
 
     setTimeout(() => {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -275,13 +313,14 @@ const HomePage = () => {
   };
 
   const handleCurrentChat = (item) => {
+    setIsAiChat(false);
     setCurrentChat(item);
-    console.log("Current chat:", item); 
-     setTimeout(() => {
+    console.log("Current chat:", item);
+    setTimeout(() => {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }, 50);
   };
-  
+
 
   useEffect(() => {
     if (currentChat?.id) {
@@ -302,6 +341,144 @@ const HomePage = () => {
 
   console.log("ALL CHAT : ", chat.chats);
   console.log("Nguoi dung hien tai : ", auth.reqUser);
+  console.log(" Danh sach tim kiem : ", auth.searchUser)
+
+
+  const [formMessage, setFormMessage] = React.useState({
+    content: "",
+    audio: null,
+    image: null,
+    file: null,
+  });
+
+  /*- gửi ghi âm bằng lời nói của cá nhân -*/
+  const [previewUrlAudio, setPreviewUrlAudio] = useState(null);
+
+  const [previewUrlImage, setPreviewUrlImage] = useState(null);
+  const [aspectType, setAspectType] = useState(null);
+
+
+  const [previewUrlFile, setPreviewUrlFile] = useState(null);
+
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setFormMessage((prev) => ({ ...prev, image: file }));
+      const previewUrl = URL.createObjectURL(file);
+      setPreviewUrlImage(previewUrl);
+
+      getImageAspectType(previewUrl)
+        .then(type => {
+          setAspectType(type);
+          
+        })
+        .catch(err => {
+          console.error("Không đọc được ảnh:", err);
+        });
+    }
+  };
+
+  const handleAudioChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setFormMessage((prev) => ({ ...prev, audio: file }));
+      setPreviewUrlAudio(URL.createObjectURL(file));
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setFormMessage((prev) => ({ ...prev, file: file }));
+      setPreviewUrlFile(file.name);
+    }
+  };
+
+  const removeImage = () => {
+    setFormMessage((prev) => ({ ...prev, image: null }));
+    setPreviewUrlImage(null);
+  };
+
+  const removeAudio = () => {
+    setFormMessage((prev) => ({ ...prev, audio: null }));
+    setPreviewUrlAudio(null);
+  };
+
+  const removeFile = () => {
+    setFormMessage((prev) => ({ ...prev, file: null }));
+    setPreviewUrlFile(null);
+  };
+
+
+
+  const handleCreateOnMessageAi = () => {
+    if (
+      !formMessage.content &&
+      !formMessage.audio &&
+      !formMessage.image &&
+      !formMessage.file
+    ) {
+      return;
+    }
+
+    const formData = new FormData();
+    if (formMessage.content) {
+      formData.append("sendMessage", formMessage.content);
+    }
+    if (formMessage.audio instanceof File) {
+      formData.append("audio", formMessage.audio);
+    }
+    if (formMessage.image instanceof File) {
+      formData.append("image", formMessage.image);
+    }
+    if (formMessage.file instanceof File) {
+      formData.append("file", formMessage.file);
+    }
+
+    // Gửi dạng string để Spring parse được
+    formData.append("temperature", "0.7");
+    formData.append("maxTokens", "500");
+
+    setAllAiChat((prev) => [
+      ...prev,
+      {
+        isRequest: false,
+        content: formMessage.content,
+        audio: formMessage.audio,
+        image: previewUrlImage,
+        file: formMessage.file,
+      },
+    ]);
+
+    setFormMessage({ content: "", audio: null, image: null, file: null });
+    setPreviewUrlAudio(null);
+    setPreviewUrlImage(null);
+    setPreviewUrlFile(null);
+    dispatch(
+      chatWithAi(
+        formData,
+
+        (resData) => {
+          setAllAiChat((prev) => [
+            ...prev,
+            { isRequest: true, ...resData },
+          ]);
+
+
+        },
+        (err) => {
+          console.error("Gửi AI thất bại:", err);
+        }
+      )
+    );
+
+    setTimeout(() => {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 50);
+  };
+  console.log("Tất cả tin nhắn gửi cho AI : ", AllAiChat)
+
 
 
 
@@ -371,8 +548,12 @@ const HomePage = () => {
                   </button>
 
 
-                  <button className="cursor-pointer">
-                    {" "}
+                  <button className="cursor-pointer" onClick={() => {
+                    setIsAiChat(!isAlChat)
+                  }
+
+                  }>
+
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="text-white size-7">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 9.75a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375m-13.5 3.01c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 0 1 .778-.332 48.294 48.294 0 0 0 5.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
                     </svg>
@@ -396,7 +577,9 @@ const HomePage = () => {
                     </button>
 
                     <div>
+
                       <Menu
+
                         id="basic-menu"
                         anchorEl={anchorEl}
                         open={open}
@@ -405,6 +588,10 @@ const HomePage = () => {
                           list: {
                             "aria-labelledby": "basic-button",
                           },
+                        }}
+                        transformOrigin={{
+                          vertical: 'top',
+                          horizontal: 'left',
                         }}
                       >
                         <MenuItem onClick={handleClose}>Profile</MenuItem>
@@ -465,7 +652,7 @@ const HomePage = () => {
                       <div key={item.id} onClick={() => handleClickOnChatCart(item.id)}>
                         <hr />
                         <ChatCard
-                          user={auth.reqUser.fullname}             
+                          user={auth.reqUser.fullname}
                           name={item.fullname}
                           userImage={
                             item.profilePicture
@@ -483,16 +670,17 @@ const HomePage = () => {
                 );
               })()}
 
+              {/* Danh sách bạn bè  */}
               {chat.chats.length > 0 &&
                 !querys &&
                 chat.chats?.map((item) => (
-                  <div key={item.id} onClick={() =>  handleCurrentChat(item)}>
+                  <div key={item.id} onClick={() => handleCurrentChat(item)}>
                     {" "}
                     <hr />
                     {/* CHAT NHÓM */}
                     {item.group ? (
                       <ChatCard
-
+                        tin_nhan_cuoi_cung={FinalChats?.find(itemx => itemx?.chat_id === item.id) || null}
                         isChat={true}
                         name={
                           item.chatName
@@ -504,6 +692,7 @@ const HomePage = () => {
                     ) : (
                       // CHAT CA NHAN
                       <ChatCard
+                        tin_nhan_cuoi_cung={FinalChats?.find(itemx => itemx?.chat_id === item.id) || null}
                         name={
                           auth.reqUser?.id === item.users[0]?.id ? item.users[1]?.fullname : item.users[0]?.fullname
                         }
@@ -520,8 +709,207 @@ const HomePage = () => {
 
 
 
+
+
+
+        {/* Chat voi ai */}
+        {isAlChat && (
+          <div className="w-[70%] relative ">
+
+            {/* Phân bên trên của đoạn tin nhắn  */}
+            <div className="absolute z-[9999] top-0 flex items-center justify-between w-full px-6 py-1 bg-slate-300 header h-17 ">
+              {/* Bên trái: Avatar và tên */}
+              <div className="flex items-center space-x-4">
+                <img
+                  className="w-10 h-10 rounded-full"
+                  src="https://hoanghamobile.com/tin-tuc/wp-content/uploads/2024/03/anime-hay-nhat-10.jpg"
+                  alt=""
+                />
+                <p className="font-medium">
+                  AI CHAT
+                </p>
+              </div>
+
+              {/* Bên phải: Icon */}
+              <div className="flex items-center space-x-4">
+                <button className="cursor-pointer">
+                  <img
+                    src="src/assets/icon/search.png"
+                    className="w-7 h-7"
+                    alt="search"
+                  />
+                </button>
+                <button className="cursor-pointer" >
+                  <img
+                    src="src/assets/icon/more.png"
+                    className="w-7 h-7"
+                    alt="more"
+                  />
+                </button>
+              </div>
+            </div>
+
+            {/* Phần viết tin nhắn giữa AI và Người */}
+            <div className={`px-10 h-[91vh] overflow-y-scroll pt-2 pb-15 ${infoChat ? "pr-[400px]" : ""}`}>
+
+              <div className="flex flex-col justify-center py-2 mt-20 space-y-1 ">
+                <MessageCard
+                  key="ai_initial"
+                  isReqMessage={true}
+                  content={"Chào bạn! Tôi là AI Chat. Bạn cần giúp gì hôm nay?"}
+                  isTyping={true}
+                />
+              </div>
+
+              {/* Phần viết al giữa người dùng */}
+              <div className="flex flex-col">
+                {AllAiChat.map((msg, index) => (
+                  <MessageCardAi
+                    key={index}
+                    isRequest={msg.isRequest}
+                    content={msg.content}
+                    response={msg.response}
+                    image={msg.image}
+                    audio={msg.audio}
+                    file={msg.file}
+                  />
+                ))}
+              </div>
+              <div ref={bottomRef} />
+            </div>
+
+
+
+
+            {/* Phần soạn tin nhắn giữa Ai và Người */}
+            <div className={`absolute w-full py-2 text-base bg-gray-400 footer bottom-0 ${infoChat ? "pr-[380px]" : ""}`}>
+              <div className="flex flex-wrap gap-4 mb-5 ml-3">
+
+                {/* Preview Image */}
+                {previewUrlImage && (
+                  <div className="relative overflow-hidden border border-gray-200 rounded-lg shadow-md">
+                    <img
+                      src={previewUrlImage}
+                      alt="Preview"
+                      className={
+                        "z-0 " + 
+                        (
+                          aspectType === "HORIZONTAL"
+                            ? "w-[120px] h-[70px]"
+                            : aspectType === "VERTICAL"
+                              ? "w-[70px] h-[120px]"
+                              : aspectType === "SQUARE"
+                                ? "w-[70px] h-[70px]"
+                                : "w-[120px] h-[70px]"
+                        )
+                      }
+                    />
+
+                    <button
+                      onClick={removeImage}
+                      className="flex justify-center items-center absolute bg-amber-500 z-[10] w-4 h-4 top-0 right-0 rounded-full"
+                      type="button"
+                    >
+                      &times;
+                    </button>
+                  </div>
+
+
+                )}
+
+
+                {/* Preview Audio */}
+                {previewUrlAudio && (
+                  <div className="relative flex items-center justify-center p-3 bg-white border border-gray-200 rounded-lg shadow-md">
+                    <audio controls src={previewUrlAudio} className="w-[200px] h-10" />
+                    <button
+                      onClick={removeAudio}
+                      className="absolute flex items-center justify-center w-5 h-5 text-xs text-white transition bg-red-500 rounded-full shadow -top-2 -right-2 hover:bg-red-600"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                )}
+
+                {/* Preview File */}
+                {previewUrlFile && (
+                  <div className="relative flex items-center gap-2 p-3 bg-white border border-gray-200 rounded-lg shadow-md">
+                    <span className="text-2xl">📄</span>
+                    <span className="truncate max-w-[150px] text-sm font-medium text-gray-700">
+                      {previewUrlFile}
+                    </span>
+                    <button
+                      onClick={removeFile}
+                      className="absolute flex items-center justify-center w-5 h-5 text-xs text-white transition bg-red-500 rounded-full shadow -top-2 -right-2 hover:bg-red-600"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                )}
+
+              </div>
+
+
+              <div className="flex items-center justify-between gap-2 px-4">
+                {/* Preview */}
+
+                <div className="flex gap-2 mt-1">
+                  {/* Nút chọn file */}
+                  <label>
+                    <input type="file" onChange={handleFileChange} hidden />
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="text-white cursor-pointer size-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z" />
+                    </svg>
+                  </label>
+
+                  {/* Nút chọn audio */}
+                  <label>
+                    <input type="file" accept="audio/*" onChange={handleAudioChange} hidden />
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="text-white cursor-pointer size-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z" />
+                    </svg>
+                  </label>
+
+                  {/* Nút chọn ảnh */}
+                  <label>
+                    <input type="file" accept="image/*" onChange={handleImageChange} hidden />
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="text-white cursor-pointer size-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                    </svg>
+                  </label>
+                </div>
+
+                {/* Ô nhập text */}
+                <input
+                  className="py-1.5 pl-3 bg-white border border-gray-200 rounded-md outline-none w-full text-sm placeholder-gray-400 focus:ring-2 focus:ring-indigo-300 transition-all duration-200"
+                  type="text"
+                  onChange={(e) => setFormMessage((prev) => ({ ...prev, content: e.target.value }))}
+                  placeholder="Type a message"
+                  value={formMessage.content}
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter") {
+                      handleCreateOnMessageAi();
+                    }
+                  }}
+                />
+
+                {/* Nút gửi */}
+                <button onClick={handleCreateOnMessageAi}>
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="text-white size-5 ">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.25l13.5 6.75-13.5 6.75V5.25z" />
+                  </svg>
+                </button>
+              </div>
+
+
+            </div>
+
+
+          </div>
+        )}
+
         {/* Page trò chuyện khi nhấn vào một người dùng  */}
-        {!currentChat && (
+        {!currentChat && !isAlChat && (
           <div className="flex items-center justify-center h-full mr-6 right">
             <div className="w-[70%] text-center">
               <img
@@ -542,10 +930,8 @@ const HomePage = () => {
         )}
 
 
-
-
         {/* Header của người bạn */}
-        {currentChat && (
+        {currentChat && !isAlChat && (
           <div className="w-[70%] relative ">
 
             {/* Nút mở emoji picker */}
@@ -615,7 +1001,6 @@ const HomePage = () => {
             {infoChat && (
               <ChatInfo currentChat={currentChat} auth={auth} setInfoChat={() => setInfoChat(false)} />
             )}
-
 
 
             {/* Phần viết tin nhắn giữa hai người */}
@@ -729,7 +1114,7 @@ const HomePage = () => {
 
 
       </div>
-    </div>
+    </div >
   );
 };
 

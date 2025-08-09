@@ -2,7 +2,9 @@ package com.example.chat_runtime.service.impl;
 
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
+import com.example.chat_runtime.dto.request.ChatAIRequest;
 import com.example.chat_runtime.dto.request.GroupChatRequest;
+import com.example.chat_runtime.dto.response.ChatAiResponse;
 import com.example.chat_runtime.dto.response.MessageChatFinal;
 import com.example.chat_runtime.entity.Chat;
 import com.example.chat_runtime.entity.Message;
@@ -12,32 +14,57 @@ import com.example.chat_runtime.exceptions.UserException;
 import com.example.chat_runtime.repository.ChatRepository;
 import com.example.chat_runtime.repository.UserRepository;
 import com.example.chat_runtime.service.ChatService;
-import com.example.chat_runtime.service.MessageService;
 import com.example.chat_runtime.service.UserService;
+import com.example.chat_runtime.utils.MultipartInputStreamFileResource;
+import com.example.chat_runtime.utils.OpenApiKey;
+import com.example.chat_runtime.utils.SystemText;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.time.LocalDateTime;
+import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.List;
-
 import java.util.Map;
 import java.util.UUID;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
+import org.apache.tika.exception.TikaException;
+import org.apache.tika.metadata.Metadata;
+import org.apache.tika.parser.AutoDetectParser;
+import org.apache.tika.sax.BodyContentHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.ai.chat.prompt.ChatOptions;
+import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.chat.prompt.SystemPromptTemplate;
+import org.springframework.ai.content.Media;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MimeTypeUtils;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
+import org.xml.sax.SAXException;
 
 @Service
 @RequiredArgsConstructor
 public class ChatServiceImpl  implements ChatService {
+  private static final Logger logger = LoggerFactory.getLogger(ChatServiceImpl.class);
   private final Cloudinary cloudinary;
   private final ChatRepository chatRepository;
 
   private final UserService userService;
   private final UserRepository userRepository;
+
+  private final ChatClient chatClient;
+  private final RestTemplate restTemplate;
+
+
 
   /**
    * Tạo đoạn chat riêng tư (1-1) giữa người gửi (reqUser) và người nhận (userId2)
@@ -183,14 +210,11 @@ public class ChatServiceImpl  implements ChatService {
   public Chat removeUserFromGroup(Integer chatId, Integer userId, User reqUser)
       throws UserException, ChatException {
 
-    // Tìm đoạn chat hoặc báo lỗi
     Chat chat = chatRepository.findById(chatId)
         .orElseThrow(() -> new ChatException("Chat not found with id: " + chatId));
 
-    // Tìm user cần xóa
     User userToRemove = userService.findUserById(userId);
 
-    // Nếu người gửi yêu cầu là admin → có quyền xóa bất kỳ ai
     if (chat.getAdmins().contains(reqUser)) {
       chat.getUsers().remove(userToRemove);
       return chatRepository.save(chat);
@@ -213,21 +237,118 @@ public class ChatServiceImpl  implements ChatService {
         .orElseThrow(() -> new ChatException("Chat not found with id: " + chatId));
     chatRepository.deleteById(chat.getId());
   }
+
+
   @Override
   public MessageChatFinal findChatMessageFinal(User reqUser, Chat chat) {
     MessageChatFinal messageChatFinal = new MessageChatFinal();
 
     List<Message> messages = chat.getMessages();
     if (messages == null || messages.isEmpty()) {
-
       return null;
     }
     Message message = messages.get(messages.size() - 1);
     messageChatFinal.setChat_id(chat.getId());
     messageChatFinal.setFinal_content(message.getContent());
     messageChatFinal.setNameSendFinalMessage(message.getUser().getFullname());
+    messageChatFinal.setEmailSendFinalMessage(message.getUser().getEmail());
+    if(chat.isGroup()){
+      messageChatFinal.setTypeChatMessage("group");
+    }
+    else{
+      messageChatFinal.setTypeChatMessage("individual");
+    }
     messageChatFinal.setTimestamp(message.getTimestamp());
     return messageChatFinal;
   }
+
+  @Override
+  public ChatAiResponse chatAI(ChatAIRequest chatRequest) {
+    if (chatRequest == null ||
+        (isEmpty(chatRequest.getSendMessage()) &&
+         isFileEmpty(chatRequest.getAudio()) &&
+         isFileEmpty(chatRequest.getImage()) &&
+         isFileEmpty(chatRequest.getFile()))) {
+      logger.warn("Yêu cầu không hợp lệ. Thiếu nội dung.");
+      return new ChatAiResponse(
+          "Bạn ơi, gửi tớ một tin nhắn, file âm thanh, hình ảnh hoặc tài liệu gì đó nhé!",
+          null, null, null
+      );
+    }
+    String audioUrl = null;
+    String imageUrl = null;
+    String fileUrl = null;
+    List<Media> medias = new ArrayList<>();
+    try {
+      if (!isFileEmpty(chatRequest.getAudio())) {
+        audioUrl = saveFile(chatRequest.getAudio());
+        medias.add(Media.builder()
+            .mimeType(MimeTypeUtils.parseMimeType(chatRequest.getAudio().getContentType()))
+            .data(chatRequest.getAudio().getResource())
+            .build());
+      }
+      if (!isFileEmpty(chatRequest.getImage())) {
+        imageUrl = saveFile(chatRequest.getImage());
+        medias.add(Media.builder()
+            .mimeType(MimeTypeUtils.parseMimeType(chatRequest.getImage().getContentType()))
+            .data(chatRequest.getImage().getResource())
+            .build());
+      }
+      if (!isFileEmpty(chatRequest.getFile())) {
+        fileUrl = saveFile(chatRequest.getFile());
+        medias.add(Media.builder()
+            .mimeType(MimeTypeUtils.parseMimeType(chatRequest.getFile().getContentType()))
+            .data(chatRequest.getFile().getResource())
+            .build());
+      }
+      String conversationId = chatRequest.getConversationId() != null
+          ? chatRequest.getConversationId()
+          : UUID.randomUUID().toString();
+
+      org.springframework.ai.chat.messages.Message systemMessage =
+          new SystemPromptTemplate(SystemText.systemText).createMessage(Map.of());
+
+      ChatOptions chatOptions = ChatOptions.builder()
+          .temperature(chatRequest.getTemperature() != null ? chatRequest.getTemperature() : 0.6)
+          .maxTokens(chatRequest.getMaxTokens() != null ? chatRequest.getMaxTokens() : 1000)
+          .build();
+
+      String userMessageText = chatRequest.getSendMessage();
+
+      if (isEmpty(userMessageText) && !medias.isEmpty()) {
+        userMessageText = "Cái này tôi vừa gửi là gì?";
+      }
+      UserMessage userMessage = UserMessage.builder()
+          .text(userMessageText)
+          .media(medias)
+          .build();
+      Prompt prompt = new Prompt(List.of(systemMessage, userMessage), chatOptions);
+      String response = chatClient
+          .prompt(prompt)
+          .advisors(advisor -> advisor.param(ChatMemory.CONVERSATION_ID, conversationId))
+          .call()
+          .content();
+
+      logger.info("Phản hồi từ AI (conversationId={}): {}", conversationId, response);
+
+      return new ChatAiResponse(response, audioUrl, imageUrl, fileUrl);
+
+    } catch (IOException e) {
+      logger.error("Lỗi xử lý file hoặc gọi AI: {}", e.getMessage(), e);
+      return new ChatAiResponse(
+          "Tớ gặp lỗi khi xử lý file hoặc gọi AI. Bạn thử lại sau nhé!",
+          audioUrl, imageUrl, fileUrl
+      );
+    }
+  }
+
+  private boolean isEmpty(String text) {
+    return text == null || text.trim().isEmpty();
+  }
+
+  private boolean isFileEmpty(MultipartFile file) {
+    return file == null || file.isEmpty();
+  }
+
 
 }

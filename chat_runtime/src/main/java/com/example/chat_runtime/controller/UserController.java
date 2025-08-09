@@ -50,9 +50,6 @@ public class UserController {
   public ResponseEntity<List<User>> searchUserHandler(@RequestHeader("Authorization") String token
       ,@PathVariable("query") String query) {
     User user = userService.findUserProfile(token);
-    if(user == null){
-      return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-    }
     return ResponseEntity.ok(userService.searchUser(query));
   }
 

@@ -13,6 +13,8 @@ public class MessageChatFinal {
     private Integer chat_id;
     private String final_content;
     private String nameSendFinalMessage;
+    private String emailSendFinalMessage;
+    private String typeChatMessage; // private or group
     private String audio;
     private String type;
     private LocalDateTime timestamp;

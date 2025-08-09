@@ -1,13 +1,25 @@
 import React from "react";
+import { getImageAspectType } from "../../utils/CheckSizeImage";
+import { useState, useEffect } from "react";
+const MessageCardAi = ({ isRequest, content, response, isTyping, image, file, audio }) => {
+  const [aspectType, setAspectType] = useState("");
 
-const MessageCard = ({ isReqMessage, content, isTyping, image, file, audio }) => {
+  useEffect(() => {
+    getImageAspectType(image)
+      .then(type => {
+        setAspectType(type);
+
+      })
+      .catch(err => {
+        console.error("Không đọc được ảnh:", err);
+      });
+  }, [image])
   return (
     <div
-      className={`px-4 py-2 rounded-xl max-w-[60%] ${
-        isReqMessage
+      className={`px-4 py-2 rounded-xl max-w-[60%] ${isRequest
           ? "self-start bg-blue-50 border border-blue-200 shadow-lg"
           : "self-end bg-gradient-to-br from-purple-100 to-indigo-100 shadow-lg"
-      } my-2 mx-3 transition-all duration-300 hover:shadow-xl hover:scale-[1.03] transform-gpu`}
+        } my-2 mx-3 transition-all duration-300 hover:shadow-xl hover:scale-[1.03] transform-gpu`}
     >
       {/* Nội dung text */}
       {content && (
@@ -23,13 +35,28 @@ const MessageCard = ({ isReqMessage, content, isTyping, image, file, audio }) =>
         </div>
       )}
 
+      {response && (
+        <div className="leading-relaxed text-gray-900 break-words whitespace-pre-line">
+          {response}
+        </div>
+      )}
       {/* Ảnh */}
       {image && (
         <div className="mt-2">
           <img
             src={image}
             alt="Attached"
-            className="max-w-full transition border border-gray-200 rounded-lg shadow-sm hover:shadow-md"
+            className={"max-w-full transition border border-gray-200 rounded-lg shadow-sm hover:shadow-md " + (
+              (
+                aspectType === "HORIZONTAL"
+                  ? "w-[250px] h-[180px]"
+                  : aspectType === "VERTICAL"
+                    ? "w-[70px] h-[120px]"
+                    : aspectType === "SQUARE"
+                      ? "w-[70px] h-[70px]"
+                      : "w-[120px] h-[70px]"
+              )
+            )}
           />
         </div>
       )}
@@ -59,4 +86,4 @@ const MessageCard = ({ isReqMessage, content, isTyping, image, file, audio }) =>
 };
 
 
-export default MessageCard;
+export default MessageCardAi;

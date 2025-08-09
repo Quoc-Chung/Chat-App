@@ -1,5 +1,5 @@
 import { BASE_API_URL } from "../../config/Api";
-import { CREATE_CHAT, CREATE_GROUP, GET_USERS_CHAT } from "./ActionType";
+import { CREATE_CHAT, CREATE_GROUP, GET_USERS_CHAT , GET_FINAL_MESSAGE, CHAT_AI} from "./ActionType";
 
 
 export const createChat = (chatData) => async (dispatch) => {
@@ -66,3 +66,53 @@ export const getUserChat = (chatData) => async (dispatch) => {
   }
 };
 
+export const getAllChatFinal = (token) => async (dispatch) => {
+  try {
+    const res = await fetch(`${BASE_API_URL}/api/chats/listmessagefinal`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    const data = await res.json();
+    dispatch({ type: GET_FINAL_MESSAGE , payload: data });
+  } catch (error) {
+    console.error("Error getting all chats:", error);
+  }
+}
+
+export const chatWithAi = (formData, onSuccess, onError) => {
+  return async (dispatch) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Không tìm thấy token. Vui lòng đăng nhập lại.");
+
+      const res = await fetch(`${BASE_API_URL}/api/chats/chat_ai`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`, 
+        },
+        body: formData,
+      });
+
+      if (!res.ok) {
+        let errMsg = "Lỗi mạng hoặc server.";
+        try {
+          const errData = await res.json();
+          errMsg = errData.message || errMsg;
+        } catch {}
+        throw new Error(errMsg);
+      }
+
+      const resData = await res.json();
+      dispatch({ type: CHAT_AI, payload: resData });
+
+      if (typeof onSuccess === "function") onSuccess(resData);
+    } catch (error) {
+      console.error("Lỗi khi chat với AI:", error);
+      if (typeof onError === "function") onError(error.message);
+    }
+  };
+};

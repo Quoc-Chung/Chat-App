@@ -2,9 +2,9 @@ import React from "react";
 import { BASE_API_URL } from "../../config/Api";
 
 const ChatCard = ({
+  tin_nhan_cuoi_cung,
   name,
   userImage,
-  timestamp,
   unreadCount = 0,
 }) => {
   return (
@@ -22,18 +22,35 @@ const ChatCard = ({
             {name}
           </p>
           <p className="text-xs text-gray-500 group-hover:text-gray-600">
-            {timestamp ? new Date(timestamp).toLocaleTimeString([], {
+            {tin_nhan_cuoi_cung?.timestamp ? new Date(tin_nhan_cuoi_cung.timestamp).toLocaleTimeString([], {
               hour: "2-digit",
               minute: "2-digit",
+              hour12: false 
             }) : ""}
           </p>
+
         </div>
         <div className="flex items-center justify-between mt-0.5">
           <p className="text-sm text-gray-600 text-ellipsis overflow-hidden whitespace-nowrap max-w-[70%]">
-              messsage
+            <div>
+              {tin_nhan_cuoi_cung ? (
+                <div className="flex gap-1 no-wrap">
 
+                  <div className="font-bold ">
+                    {tin_nhan_cuoi_cung?.nameSendFinalMessage === name ? `${name} : ` : "You:"}
+                  </div>
 
+                  <div>
+                    {tin_nhan_cuoi_cung?.final_content || "Chưa có tin nhắn nào ? "}
+                  </div>
+                </div>
+              ) : (
+                <div className="div">
+                  <p> Không có tin nhắn nào </p>
+                </div>
+              )}
 
+            </div>
           </p>
           {unreadCount > 0 && (
             <div className="flex items-center space-x-1.5">
